@@ -89,8 +89,8 @@ def full_name(lns, fns):
 
 
 if __name__ == "__main__":
-    with open(u'./students.txt', 'w', encoding='utf-8', newline='\n') as f:
-        for i in range(1, 100):
+    with open('./students.txt', 'w') as f:
+        for i in range(1, 50):
             name = full_name(last_names, first_names)
             number = ''.join([str(random.randint(0, 9)) for x in range(12)])
             f.writelines('%s\t%s\t%s\n' % (str(i), name, number))

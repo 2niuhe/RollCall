@@ -3,27 +3,38 @@ import time
 import datetime
 
 
-def txt2speech(name, repeat_times, pause_time=1):
+
+def txt2speech(name, repeat_times):
     speak = Dispatch("SAPI.SpVoice")
     speak.Rate = -3  # range -10(slow) - 10(fast)
     speak.Volume = 100  # range 0(low) - 100(loud)
     for i in range(repeat_times):
         speak.Speak(name)
-        time.sleep(pause_time)
+
+
+def load_log(filename='./点名记录.log'):
+    logs = []
+    try:
+        with open(filename, 'r') as f:
+            for line in f:
+                logs.append(line[:-1])
+    except Exception:
+        return None
+    return logs
 
 
 def load_students(filename='./students.txt'):
     students_list = []
-    with open(filename, 'rt', encoding='utf-8') as f:
+    with open(filename, 'r') as f:
         for line in f:
             line = line[:-1].split('\t')
             students_list.append(line)
     return students_list
 
 
-def add_selected(name, grade, filename='./selected.txt'):
+def add_selected(name, filename='./selected.txt'):
     with open(filename, 'a') as f:
-        f.writelines('%s\n' % name)
+        f.writelines('%s\n' % '\t'.join(name))
 
 
 def add_log(category, name, grade, filename='./点名记录.log'):
@@ -40,6 +51,7 @@ def reset_selected(filename='./selected.txt'):
     except Exception:
         return False
 
+
 def load_selected(filename='./selected.txt'):
     selected_list = []
     try:
@@ -55,4 +67,4 @@ def load_selected(filename='./selected.txt'):
 if __name__ == '__main__':
     s = load_students()
     for item in s:
-        txt2speech(item[1] ,1)
+        txt2speech(item[1])

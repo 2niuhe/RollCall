@@ -4,32 +4,47 @@ from tkinter import *
 import tkinter.messagebox as messagebox
 from tkinter import ttk
 import random
-import datetime
+from threading import Thread
 from util import *
 
-#共同变量或函数
-create_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 students_list = []
-selected_students = []
+selected_list = []
+cycle_index = 0
+category = ''
+c_name = ''
+
+
+def fresh_listbox_selected(items):
+    global students_list
+    try:
+        for item in items:
+            index = students_list.index(item)
+            listbox.selection_set(index)
+    except Exception:
+        reset_selected()
+
+def fresh_log_view():
+    text.delete(1.0, END)
+    logs = load_log()
+    if logs:
+        for log in logs:
+            text.insert(1.0, log+'\n')
 
 
 def select_category_func():
-    global students_list, selected_students, selected_category
-
-    selected_category = chose_category.get()
-    # 改变主窗口label
+    global students_list, selected_list, category
+    category = chose_category.get()
     # 读取学员
+    if category == '上课考勤':
+        clear_selected()
+    students_list = load_students()
     listbox.selection_clear(0, END)
-    selected_students = load_selected()
-    #for selected_student in selected_students[1:-1]:
-     #   index = students_list[:-1].index(selected_student[1:-1])
-      #  listbox.selection_set(index)
-
-        #读取log日志
-    text.delete(1.0, END)
-    logs = ['hello','hellolll']
-    for log in logs:
-        text.insert(1.0, log+'\n')
+    for student in students_list:
+        listbox.insert(END, student)
+    selected_list = load_selected()
+    # 刷新界面
+    fresh_listbox_selected(selected_list)
+    fresh_log_view()
     child.withdraw()
     root.deiconify()
 
@@ -38,16 +53,15 @@ root = Tk()
 root.title("课程点名系统")
 root.geometry('650x500+100+100')
 root.resizable(width=True, height=True)
-
 # -----------主页选择子窗口---------------------------
 child = Toplevel(bg='#15dbe7')
 child.resizable(width=False, height=False)
 child.geometry('250x150')
-Label(child, text='选择点名类型', height=1,fg='white',bg='orange', font=("微软雅黑", 14)).pack(expand=YES, fill=X)
+Label(child, text='选择点名类型', height=1,fg='white', bg='orange', font=("微软雅黑", 14)).pack(expand=YES, fill=X)
 category_list = StringVar()
 chose_category = ttk.Combobox(child, width=17,font=("微软雅黑", 14, "bold"), textvariable=category_list)
 chose_category['values'] = ['上课考勤', '课堂提问']    # 设置下拉列表的值
-chose_category.current(0)    # 设置下拉列表默认显示的值，0为 numberChosen['values'] 的下标值
+chose_category.current(1)    # 设置下拉列表默认显示的值，0为 numberChosen['values'] 的下标值
 chose_category.pack(expand=YES)
 but1 = Button(child, text="选择", width=5, font=("微软雅黑", 14), command=select_category_func)
 but1.pack()
@@ -58,45 +72,28 @@ root.withdraw()
 frame = Frame(root, bg='#15dbe7')
 labelname = Label(frame, text="这是一个点名小程序",height=1,width='52',font=("微软雅黑", 14, "bold"),fg='white', bg='orange')
 labelname.pack(expand=NO,fill=X)
-#学员列表
-students_list = load_students()
 listbox = Listbox(frame,  selectmode=MULTIPLE,  bg='#15dbe7', height=15, width=22, font=('Arial', 12))
 listbox.pack(side=LEFT,expand=NO,fill=Y)  # 将小部件放置到主窗口中
-for item in students_list:
-    listbox.insert(END, item)
-#列表上的鼠标点击对选择框的影响
-def click_list(event):
-    global selected_students
-    for selected_student in selected_students[1:-1]:
-        index = students_list.index(selected_student)
-        listbox.selection_set(index)
-
-listbox.bind('<Button-1>', click_list)
-
-#列表中显示已选过的学员
-for selected_student in selected_students[1:]:
-    index = students_list.index(selected_student)
-    listbox.selection_set(index)
-
 #添加列表的滚动条
 sl = Scrollbar(frame)
 sl.set(0, 0.5)
 sl.pack(side=LEFT, fill=Y)
 listbox['yscrollcommand'] = sl.set
 sl['command'] = listbox.yview
-
-
 # 文本框,显示已往的记录
 v = StringVar()
-text = Text(frame, width='40', height='20', fg='blue')
+text = Text(frame, width='40', height='10',font=("微软雅黑", 10), fg='blue')
 text.pack(expand=YES, fill=BOTH)
 # 显示被选学生标签
 cur_selected = StringVar()
 cur_label = Label(frame,width='40', height='1',textvariable=cur_selected,font=("微软雅黑", 22, "bold"))
 cur_label.pack(expand=YES,fill=X)
 
+fresh_listbox_selected(selected_list)
+fresh_log_view()
+
 def set_grade():
-    print(grade.get())
+    return grade.get()
 
 # 学生成绩单选框
 grade = StringVar()
@@ -115,45 +112,80 @@ r3 = Radiobutton(frame, text='没来',font=("微软雅黑", 12, "bold"),
 r3.pack(side='top', fill=X, padx=10,pady=4)
 
 
-def choose_func():
+def get_remaining_students():
     global students_list, selected_list
-    # len(selected_students)
-    if  1 == len(students_list):
-        listbox.selection_clear(0, END)
-        reset_selected()
-        selected_list = []
-        messagebox.showinfo(title="开始新一轮选择", message='从头再来')
+    result = []
+    for student in students_list:
+        if student not in selected_list:
+            result.append(student)
+    return result
+
+
+
+def choose_func():
+    global selected_list, c_name, category, cycle_index
+    repeate_times = 1
+    if category == '上课考勤':
+        repeate_times = 1
+        if cycle_index <= len(students_list)-1:
+            c_name = students_list[cycle_index]
+            cycle_index += 1
+        else:
+            messagebox.showinfo(title="点名结束", message='点名结束，重置后可重新点名')
+            return None
     else:
-        random.seed()
-        c_name = random.choice(students_list)
-        cur_selected.set(c_name)
-        #更新类文本
-        # selected_list.append(c_name)
-        #更新列表
-        index = students_list.index(c_name)
-        listbox.selection_set(index)
+        remaining_students = get_remaining_students()
+        if len(remaining_students) == 0:
+            listbox.selection_clear(0, END)
+            reset_selected()
+            selected_list = []
+            messagebox.showinfo(title="开始新一轮选择", message='从头再来')
+        else:
+            random.seed()
+            c_name = random.choice(remaining_students)
+    cur_selected.set(c_name)
+    #更新类文本
+    selected_list.append(c_name)
+    fresh_listbox_selected(selected_list)
+    add_selected(c_name)
+    t = Thread(target=txt2speech, args=(c_name[1],repeate_times))
+    t.start()
 
 
-def reset_selected():
-    global selected_list
+def clear_selected():
+    global selected_list, cycle_index
+    cycle_index = 0
     listbox.selection_clear(0, END)
-    with open('./selected.txt', 'w+')as f:
-        f.truncate()
-    # 清空所有日志信息
-    text.delete(1.0, END)
-
-def add_grade_log():
-    set_grade()
-    print('hhhhhhhhh')
+    selected_list = []
+    reset_selected()
 
 
-but8 = Button(frame, text="记录成绩", width=7, font=("微软雅黑", 14), command=set_grade)
-but8.bind("<Return>", set_grade)
+def add_grade_log(event=None):
+    global category
+    if c_name:
+        name_str = '\t'.join(c_name)
+        add_log(category, name_str, set_grade())
+    fresh_log_view()
+    if category == '上课考勤':
+        choose_func()
+
+def save_log(filename='./点名记录.log'):
+    with open(filename, 'w') as fh:
+        msg = text.get(1.0, END)
+        fh.write(msg)
+
+
+but8 = Button(frame, text="记录成绩", width=7, font=("微软雅黑", 14), command=add_grade_log)
+but8.focus_set()
+but8.bind('<Return>', add_grade_log)
 but8.pack(side=LEFT, padx=6)
-but8 = Button(frame, text="重置已选", width=7, font=("微软雅黑", 14), command=reset_selected)
-but8.pack(side=LEFT, padx=6)
+but6 = Button(frame, text="保存记录", width=7, font=("微软雅黑", 14), command=save_log)
+but6.pack(side=LEFT, padx=6)
+but5 = Button(frame, text="重置已选", width=7, font=("微软雅黑", 14), command=clear_selected)
+but5.pack(side=LEFT, padx=6)
 but7 = Button(frame, text="开始选择", width=7, font=("微软雅黑", 14), command=choose_func)
 but7.pack(side=LEFT, padx=6)
+
 
 
 
