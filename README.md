@@ -5,8 +5,13 @@
 功能：   
 
 - 遍历列表并点名
-- 随机抽人回答问题
+- 随机抽人回答问题，记录回答情况
 - 将点名/回答情况记录到日志文档中
+
+UI界面：  
+> 使用Tkinter实现，接面参考了https://github.com/thoftheocean/rollCall
+
+![界面图](http://ww1.sinaimg.cn/large/005zP76tly1fs47bzicywj30i40es75h.jpg)
 
 
 可以下载dist目录下的exe文件试用，需要在exe的当前目录放置students.txt文件。   
