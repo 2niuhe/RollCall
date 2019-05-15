@@ -9,7 +9,7 @@
 - 将点名/回答情况记录到日志文档中
 
 UI界面：  
-> 使用Tkinter实现，接面参考了https://github.com/thoftheocean/rollCall
+> 使用Tkinter实现，届面参考了https://github.com/thoftheocean/rollCall
 
 ![界面图](http://ww1.sinaimg.cn/large/005zP76tly1fs47bzicywj30i40es75h.jpg)
 
